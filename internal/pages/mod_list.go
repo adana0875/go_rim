@@ -19,7 +19,7 @@ type InputParams struct {
 // Main Modlist panel
 func InputPanel(opts InputParams, state *state.AppState) *fyne.Container {
 
-	modContainer := components.NewModList(state.ModList)
+	modContainer := components.NewModList(state.ModList, state)
 
 	//sub to state updates refreshing
 	state.AddModWatcher(func(mods []types.InternalMod) {

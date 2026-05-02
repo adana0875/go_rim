@@ -3,8 +3,8 @@ package pages
 import (
 	"gorim/internal/components"
 	"gorim/internal/state"
-	"gorim/internal/types"
 	"image/color"
+	"log"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -35,9 +35,17 @@ import (
 
 func NewPluginList(state *state.AppState) *fyne.Container {
 
-	modContainer := components.NewPluginList(state.PluginList)
+	modContainer := components.NewPluginList(state)
 
-	state.AddPluginWatcher(func(mods []types.InternalPlugin) {
+	state.AddPluginWatcher(func(mods []string) {
+		log.Printf("Length is %d and list length is %d", len(state.PluginList), modContainer.Length())
+		fyne.Do(func() {
+			modContainer.Refresh()
+		})
+	})
+
+	state.AddModStateWatcher(func(mod string, enabled bool) {
+		log.Printf("Length is %d and list length is %d", len(state.PluginList), modContainer.Length())
 		fyne.Do(func() {
 			modContainer.Refresh()
 		})

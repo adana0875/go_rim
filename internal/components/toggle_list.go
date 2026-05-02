@@ -1,6 +1,7 @@
 package components
 
 import (
+	"gorim/internal/state"
 	"gorim/internal/types"
 	"sort"
 
@@ -9,19 +10,25 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-func NewModList(items map[string]types.InternalMod) *widget.List {
-	keys := make([]string, 0, len(items))
-	for k := range items {
-		keys = append(keys, k)
+func NewModList(items map[string]types.InternalMod, appState *state.AppState) *widget.List {
+	var mods []types.InternalMod
+	for _, mod := range items {
+		mods = append(mods, mod)
 	}
 
-	sort.Slice(keys, func(i, j int) bool {
-		return items[keys[i]].Order < items[keys[j]].Order
-	})
+	getSortedKeys := func() []string {
+		sort.Sort(types.ModByOrder(mods))
+		keys := make([]string, 0, len(mods))
+		for _, k := range mods {
+			keys = append(keys, k.PackageId)
+		}
+		return keys
+	}
 
+	keys := getSortedKeys()
 	list := widget.NewList(
 		func() int {
-			return len(items)
+			return len(mods)
 		},
 		func() fyne.CanvasObject {
 			return container.NewHBox(&widget.Check{}, widget.NewLabel("Mods"))
@@ -38,7 +45,7 @@ func NewModList(items map[string]types.InternalMod) *widget.List {
 
 			check.SetChecked(mod.Enabled)
 			check.OnChanged = func(checked bool) {
-				mod.Enabled = checked
+				appState.EnableMod(mod.PackageId, checked)
 			}
 		},
 	)
@@ -46,38 +53,29 @@ func NewModList(items map[string]types.InternalMod) *widget.List {
 	return list
 }
 
-func NewPluginList(items map[string]types.InternalPlugin) *widget.List {
-
-	keys := make([]string, 0, len(items))
-	for k := range items {
-		keys = append(keys, k)
+// declaration a plugin list
+// should follow the app state of plugins
+func NewPluginList(appState *state.AppState) *widget.List {
+	//get the active plugins - probs not necessary
+	var activeItems []types.InternalMod
+	for _, plugin := range appState.ModList {
+		if plugin.Enabled {
+			activeItems = append(activeItems, plugin)
+		}
 	}
-
-	sort.Slice(keys, func(i, j int) bool {
-		return items[keys[i]].Order < items[keys[j]].Order
-	})
 
 	list := widget.NewList(
 		func() int {
-			return len(items)
+			return len(appState.PluginList)
 		},
 		func() fyne.CanvasObject {
-			return container.NewHBox(&widget.Check{}, widget.NewLabel("Plugins"))
+			return container.NewHBox(widget.NewLabel("Plugins"))
 		},
 		func(i widget.ListItemID, o fyne.CanvasObject) {
 			box := o.(*fyne.Container)
-			check := box.Objects[0].(*widget.Check)
-			label := box.Objects[1].(*widget.Label)
+			label := box.Objects[0].(*widget.Label)
 
-			key := keys[i]
-			mod := items[key]
-
-			label.SetText(mod.Name)
-
-			check.OnChanged = func(checked bool) {
-				mod.Enabled = checked
-			}
-			check.SetChecked(mod.Enabled)
+			label.SetText(appState.PluginList[i])
 		},
 	)
 

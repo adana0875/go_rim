@@ -31,7 +31,7 @@ func readFile() (pages.InputParams, error) {
 }
 
 func main() {
-	state := state.AppState{ModList: map[string]types.InternalMod{}, PluginList: map[string]types.InternalPlugin{}}
+	state := state.AppState{ModList: map[string]types.InternalMod{}, PluginList: []string{}}
 
 	params, err := readFile()
 	if err != nil {
@@ -39,8 +39,9 @@ func main() {
 	}
 
 	//init
-	go util.CollectMods(params.WorkshopPath, &state)
-	go util.CollectPluginList(params.Modpath, &state)
+	go util.InitializePaths(params, &state, func(types.LoadedResult) {
+
+	})
 
 	a := app.New()
 	w := a.NewWindow("Hello")

@@ -4,14 +4,40 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"gorim/internal/pages"
 	"gorim/internal/state"
 	"gorim/internal/types"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
-func CollectMods(pathToWorkshop string, appState *state.AppState) {
+// synchronous load - also enables mods subscribed to and loaded
+func InitializePaths(inputs pages.InputParams, appState *state.AppState, callback func(result types.LoadedResult)) {
+	collectMods(inputs.WorkshopPath, appState)
+	collectPluginList(inputs.Modpath, appState)
+
+	//check plugins for if we have it in modlist.
+	//if we have an item in plugin list, we should be subscribed to it
+	for _, plugin := range appState.PluginList {
+		if strings.Contains(plugin, "ludeon.rimworld") {
+			continue
+		}
+		_, ok := appState.ModList[plugin]
+		if !ok {
+			log.Println("Error: modlist doest have plugin : ", plugin)
+			callback(types.LoadFailure)
+		}
+
+		//enable the mod
+		appState.EnableMod(plugin, true)
+
+	}
+	callback(types.LoadSuccess)
+}
+
+func collectMods(pathToWorkshop string, appState *state.AppState) {
 	mods, err := lookUpDirectoryMods(pathToWorkshop)
 	if err != nil {
 		log.Println("Failed to fetch mods")
@@ -22,7 +48,7 @@ func CollectMods(pathToWorkshop string, appState *state.AppState) {
 	appState.AddMods(mods)
 }
 
-func CollectPluginList(pathToMods string, appState *state.AppState) {
+func collectPluginList(pathToMods string, appState *state.AppState) {
 	err, active := lookupCurrentMods(pathToMods)
 
 	if err != nil {
@@ -33,7 +59,7 @@ func CollectPluginList(pathToMods string, appState *state.AppState) {
 	appState.AddPlugins(active)
 }
 
-// Function to look up installed workshop mods
+// Function to look up installed workshop mods - the order wont matter here
 func lookUpDirectoryMods(path string) ([]types.InternalMod, error) {
 	var mods []types.InternalMod
 
@@ -59,14 +85,23 @@ func lookUpDirectoryMods(path string) ([]types.InternalMod, error) {
 			log.Println("failed to read mod ", item)
 			continue
 		}
+		var foundFilesDir bool = false
 		for _, file := range files {
 			if file.Name() == "About" {
 				conformingMods = append(conformingMods, fmt.Sprintf("%s/%s/About", path, item))
+				foundFilesDir = true
 			}
+		}
+		if !foundFilesDir {
+			log.Printf("Couldnt find files for mod %s: %s", item, files)
 		}
 	}
 
 	for _, item := range conformingMods {
+		if strings.Contains(item, "3237397753") {
+			log.Println("found mod")
+		}
+
 		files, err := os.ReadDir(item)
 		if err != nil {
 			log.Println("Failed to read folder for mod ", item)
@@ -74,22 +109,22 @@ func lookUpDirectoryMods(path string) ([]types.InternalMod, error) {
 		}
 
 		for _, file := range files {
-			if file.Name() == "About" || file.Name() == "About.xml" {
-
-				data, err := os.ReadFile(filepath.Join(item, files[0].Name()))
+			name := strings.ToLower(file.Name())
+			if name == "about.xml" || name == "about" {
+				data, err := os.ReadFile(filepath.Join(item, file.Name()))
 				if err != nil {
-					log.Println("Failed to read file ", files[0].Name())
+					log.Println("Failed to read file ", file.Name())
 					continue
 				}
 
 				var mod types.ModDef
 				err = xml.Unmarshal(data, &mod)
 				if err != nil {
-					log.Println("Failed to read mod data ", err)
+					log.Printf("Failed to read mod data for file %s: %s", item, err)
 					continue
 				}
 
-				mods = append(mods, types.InternalMod{Name: mod.Name, Enabled: false, PackageId: mod.PackageId})
+				mods = append(mods, types.InternalMod{Name: mod.Name, Enabled: false, PackageId: strings.ToLower(mod.PackageId), LoadAfter: mod.LoadOrder})
 			}
 		}
 
@@ -99,6 +134,7 @@ func lookUpDirectoryMods(path string) ([]types.InternalMod, error) {
 
 func lookupCurrentMods(path string) (error, []types.InternalPlugin) {
 	var pluginList []types.InternalPlugin
+	//read the directory
 	files, err := os.ReadDir(path)
 	if err != nil {
 		log.Println("cant read directory for modlist")
@@ -133,8 +169,8 @@ func lookupCurrentMods(path string) (error, []types.InternalPlugin) {
 		return errors.New("failed to get mods"), pluginList
 	}
 
-	for _, mod := range rawPlugins {
-		pluginList = append(pluginList, types.InternalPlugin{Name: mod, Enabled: true})
+	for idx, mod := range rawPlugins {
+		pluginList = append(pluginList, types.InternalPlugin{Name: strings.ToLower(mod), Enabled: true, Order: idx})
 	}
 
 	return nil, pluginList
