@@ -6,23 +6,22 @@ import (
 	"slices"
 )
 
+type ModDelegate struct {
+	PackageName string
+	Enabled     bool
+}
+
 type AppState struct {
+	RimWorldVersion   string
+	KnownExpansion    []string
+	Profiles          []string
 	ModList           map[string]types.InternalMod
+	DisplayedMods     map[string]types.InternalMod
 	PluginList        []string
-	ModlistChanges    []func([]types.InternalMod)
-	PluginChanges     []func([]string)
-	ModEnabledChanges []func(string, bool)
+	ModEnabledChanges []func([]ModDelegate)
 }
 
-func (state *AppState) AddModWatcher(fn func([]types.InternalMod)) {
-	state.ModlistChanges = append(state.ModlistChanges, fn)
-}
-
-func (state *AppState) AddPluginWatcher(fn func([]string)) {
-	state.PluginChanges = append(state.PluginChanges, fn)
-}
-
-func (state *AppState) AddModStateWatcher(fn func(string, bool)) {
+func (state *AppState) AddModStateWatcher(fn func([]ModDelegate)) {
 	state.ModEnabledChanges = append(state.ModEnabledChanges, fn)
 }
 
@@ -33,7 +32,6 @@ func (state *AppState) AddPlugin(plugin types.InternalPlugin) {
 	}
 	plugins := append(state.PluginList, plugin.Name)
 	state.PluginList = plugins
-	go state.runPluginDelegates([]string{plugin.Name})
 }
 
 func (state *AppState) AddMod(mod types.InternalMod) {
@@ -43,7 +41,6 @@ func (state *AppState) AddMod(mod types.InternalMod) {
 		return
 	}
 	state.ModList[mod.PackageId] = mod
-	go state.runSubs([]types.InternalMod{mod})
 }
 
 func (state *AppState) AddPlugins(plugins []types.InternalPlugin) {
@@ -54,7 +51,6 @@ func (state *AppState) AddPlugins(plugins []types.InternalPlugin) {
 		}
 	}
 	state.PluginList = append(state.PluginList, addedPlugins...)
-	go state.runPluginDelegates(addedPlugins)
 }
 
 func (state *AppState) AddMods(mods []types.InternalMod) {
@@ -65,13 +61,16 @@ func (state *AppState) AddMods(mods []types.InternalMod) {
 			addedMods = append(addedMods, mod)
 		}
 	}
-	go state.runSubs(addedMods)
 }
 
 // enable mod functionality
 // if we are enabling, update its status and add it to the ModList
 // if we are disabling, delete it from the modlist
 func (state *AppState) EnableMod(name string, enabled bool) {
+	state.enableMod(name, enabled, true)
+}
+
+func (state *AppState) enableMod(name string, enabled bool, delegate bool) {
 	//check if we are subscribed to it
 	mod, ok := state.ModList[name]
 	if !ok {
@@ -83,6 +82,9 @@ func (state *AppState) EnableMod(name string, enabled bool) {
 	mod.Enabled = enabled
 	state.ModList[name] = mod
 
+	//get index of mod
+	index := slices.Index(state.PluginList, name)
+
 	//if removing
 	if !enabled {
 		index := slices.Index(state.PluginList, name)
@@ -93,26 +95,28 @@ func (state *AppState) EnableMod(name string, enabled bool) {
 		state.PluginList = slices.Delete(state.PluginList, index, index+1)
 	} else {
 		//only add a new one if we dont have this in there - it goes at the end
-		log.Println("add mod")
-		state.PluginList = append(state.PluginList, name)
+		if index == -1 {
+			state.PluginList = append(state.PluginList, name)
+		}
 	}
-	state.runModChangeDelegate(name, enabled)
-}
-
-func (state *AppState) runSubs(adding []types.InternalMod) {
-	for _, delegate := range state.ModlistChanges {
-		delegate(adding)
+	if delegate {
+		d := ModDelegate{PackageName: name, Enabled: enabled}
+		state.runModChangeDelegate([]ModDelegate{d})
 	}
 }
 
-func (state *AppState) runPluginDelegates(adding []string) {
-	for _, delegate := range state.PluginChanges {
-		delegate(adding)
+func (state *AppState) EnableAll(enable bool) {
+	var d []ModDelegate
+	for _, mod := range state.ModList {
+		state.enableMod(mod.PackageId, enable, false)
+		d = append(d, ModDelegate{PackageName: mod.Name, Enabled: enable})
 	}
+
+	state.runModChangeDelegate(d)
 }
 
-func (state *AppState) runModChangeDelegate(mod string, newState bool) {
+func (state *AppState) runModChangeDelegate(mods []ModDelegate) {
 	for _, delegate := range state.ModEnabledChanges {
-		delegate(mod, newState)
+		delegate(mods)
 	}
 }

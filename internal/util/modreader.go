@@ -15,8 +15,18 @@ import (
 
 // synchronous load - also enables mods subscribed to and loaded
 func InitializePaths(inputs pages.InputParams, appState *state.AppState, callback func(result types.LoadedResult)) {
+
+	current, err := readModsConfig(inputs.Modpath)
+	if err != nil {
+		log.Println("Failed to read ModsConfig: ", err)
+		return
+	}
+	//set defaults based on discovered defaults
+	appState.RimWorldVersion = current.Version
+	appState.KnownExpansion = current.KnownExpansions
+
 	collectMods(inputs.WorkshopPath, appState)
-	collectPluginList(inputs.Modpath, appState)
+	collectPluginList(current, appState)
 
 	//check plugins for if we have it in modlist.
 	//if we have an item in plugin list, we should be subscribed to it
@@ -34,7 +44,39 @@ func InitializePaths(inputs pages.InputParams, appState *state.AppState, callbac
 		appState.EnableMod(plugin, true)
 
 	}
+	appState.DisplayedMods = appState.ModList
 	callback(types.LoadSuccess)
+}
+
+// return modsConfig obj
+func readModsConfig(path string) (types.ModsConfig, error) {
+	//read the directory
+	files, err := os.ReadDir(path)
+	if err != nil {
+		log.Println("cant read directory for modlist")
+		return types.ModsConfig{}, err
+	}
+
+	//get the files in the directory
+	for _, file := range files {
+		if file.Name() == "ModsConfig" || file.Name() == "ModsConfig.xml" {
+			data, err := os.ReadFile(filepath.Join(path, "ModsConfig.xml"))
+			if err != nil {
+				log.Println("Failed to read mods xml: ", err)
+				return types.ModsConfig{}, err
+			}
+
+			var config types.ModsConfig
+			err = xml.Unmarshal(data, &config)
+
+			if err != nil {
+				log.Println("Failed to unmarshal plugin file: ", err)
+				return types.ModsConfig{}, err
+			}
+			return config, nil
+		}
+	}
+	return types.ModsConfig{}, errors.New("failed to find ModsConfig.xml")
 }
 
 func collectMods(pathToWorkshop string, appState *state.AppState) {
@@ -48,15 +90,13 @@ func collectMods(pathToWorkshop string, appState *state.AppState) {
 	appState.AddMods(mods)
 }
 
-func collectPluginList(pathToMods string, appState *state.AppState) {
-	err, active := lookupCurrentMods(pathToMods)
-
-	if err != nil {
-		log.Println("Failed to get active mods")
-		return
+func collectPluginList(modsConfig types.ModsConfig, appState *state.AppState) {
+	var pluginList []types.InternalPlugin
+	for idx, mod := range modsConfig.ActiveMods {
+		pluginList = append(pluginList, types.InternalPlugin{Name: strings.ToLower(mod), Enabled: true, Order: idx})
 	}
 
-	appState.AddPlugins(active)
+	appState.AddPlugins(pluginList)
 }
 
 // Function to look up installed workshop mods - the order wont matter here
@@ -97,11 +137,7 @@ func lookUpDirectoryMods(path string) ([]types.InternalMod, error) {
 		}
 	}
 
-	for _, item := range conformingMods {
-		if strings.Contains(item, "3237397753") {
-			log.Println("found mod")
-		}
-
+	for idx, item := range conformingMods {
 		files, err := os.ReadDir(item)
 		if err != nil {
 			log.Println("Failed to read folder for mod ", item)
@@ -124,7 +160,7 @@ func lookUpDirectoryMods(path string) ([]types.InternalMod, error) {
 					continue
 				}
 
-				mods = append(mods, types.InternalMod{Name: mod.Name, Enabled: false, PackageId: strings.ToLower(mod.PackageId), LoadAfter: mod.LoadOrder})
+				mods = append(mods, types.InternalMod{Name: mod.Name, Enabled: false, PackageId: strings.ToLower(mod.PackageId), LoadAfter: mod.LoadOrder, Order: idx})
 			}
 		}
 

@@ -1,51 +1,20 @@
 package pages
 
 import (
-	"gorim/internal/components"
-	"gorim/internal/state"
-	"image/color"
-	"log"
-
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
+	"gorim/internal/components"
+	"gorim/internal/state"
+	"image/color"
 )
 
-// func addModToPluginList(mod types.InternalMod, state *state.AppState, modList *widget.List) {
-// 	if modList == nil {
-// 		log.Println("Cannot access list")
-// 	}
-// 	fyne.Do(func() {
-// 		state.PluginList = append(state.PluginList, mod)
-// 		modList.Refresh()
-// 	})
-// }
-//
-// func addPlugins(mods []types.InternalMod, state *state.AppState, modList *widget.List) {
-// 	if modList == nil {
-// 		log.Println("Cannot access list")
-// 	}
-// 	fyne.Do(func() {
-// 		newList := append(state.PluginList, mods...)
-// 		state.PluginList = newList
-// 		modList.Refresh()
-// 	})
-// }
+func NewPluginList(appState *state.AppState) *fyne.Container {
 
-func NewPluginList(state *state.AppState) *fyne.Container {
+	modContainer := components.NewPluginList(appState)
 
-	modContainer := components.NewPluginList(state)
-
-	state.AddPluginWatcher(func(mods []string) {
-		log.Printf("Length is %d and list length is %d", len(state.PluginList), modContainer.Length())
-		fyne.Do(func() {
-			modContainer.Refresh()
-		})
-	})
-
-	state.AddModStateWatcher(func(mod string, enabled bool) {
-		log.Printf("Length is %d and list length is %d", len(state.PluginList), modContainer.Length())
+	appState.AddModStateWatcher(func([]state.ModDelegate) {
 		fyne.Do(func() {
 			modContainer.Refresh()
 		})

@@ -44,7 +44,7 @@ func main() {
 	})
 
 	a := app.New()
-	w := a.NewWindow("Hello")
+	w := a.NewWindow("")
 
 	toolbar := components.CreateToolbar()
 
@@ -54,7 +54,7 @@ func main() {
 
 	mainPanel := container.NewHSplit(modInfo, pluginInfo)
 
-	contentbox := container.NewBorder(toolbar, pages.NewActionsPanel(&state), nil, nil, mainPanel)
+	contentbox := container.NewBorder(container.NewVBox(toolbar, pages.NewBarPanel(&state)), pages.NewActionsPanel(&state), nil, nil, mainPanel)
 	w.SetContent(contentbox)
 	w.Resize(fyne.NewSize(1200, 800))
 
