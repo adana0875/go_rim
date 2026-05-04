@@ -30,6 +30,22 @@ func readFile() (pages.InputParams, error) {
 	return inputFormat, nil
 }
 
+func readRules(path string) (types.CommunityRules, error) {
+	file, err := os.ReadFile(path)
+	if err != nil {
+		log.Println("failed to read rules ", err)
+		return types.CommunityRules{}, err
+	}
+
+	var rules types.CommunityRules
+	err = json.Unmarshal(file, &rules)
+	if err != nil {
+		log.Println("failed to marshal file ", err)
+		return types.CommunityRules{}, err
+	}
+	return rules, nil
+}
+
 func main() {
 	state := state.AppState{ModList: map[string]types.InternalMod{}, PluginList: []string{}}
 
@@ -37,6 +53,12 @@ func main() {
 	if err != nil {
 		panic("Unable to read input file")
 	}
+
+	rules, err := readRules(params.RulesPath)
+	if err != nil {
+		log.Println("Failed to find rules")
+	}
+	state.Rules = rules
 
 	//init
 	go util.InitializePaths(params, &state, func(types.LoadedResult) {

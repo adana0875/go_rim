@@ -35,17 +35,19 @@ func NewModList(items map[string]types.InternalMod, appState *state.AppState) (*
 			return len(appState.DisplayedMods)
 		},
 		func() fyne.CanvasObject {
-			return container.NewHBox(&widget.Check{}, widget.NewLabel("Mods"))
+			return container.NewHBox(&widget.Check{}, widget.NewLabel("Mods"), widget.NewLabel("PluginName"))
 		},
 		func(i widget.ListItemID, o fyne.CanvasObject) {
 			box := o.(*fyne.Container)
 			check := box.Objects[0].(*widget.Check)
 			label := box.Objects[1].(*widget.Label)
+			pluginLabel := box.Objects[2].(*widget.Label)
 
 			key := keys[i]
 			mod := appState.ModList[key]
 
 			label.SetText(mod.Name)
+			pluginLabel.SetText(mod.PackageId)
 
 			check.OnChanged = nil
 			check.SetChecked(mod.Enabled)
@@ -90,4 +92,5 @@ func NewPluginList(appState *state.AppState) *widget.List {
 	)
 
 	return list
+
 }

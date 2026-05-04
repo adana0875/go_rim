@@ -16,6 +16,7 @@ import (
 type InputParams struct {
 	Modpath      string `json:"modPath"`
 	WorkshopPath string `json:"workshopPath"`
+	RulesPath    string `json:"rulesPath"`
 }
 
 func getStringChar(s string) string {

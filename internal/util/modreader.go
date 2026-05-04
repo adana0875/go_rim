@@ -160,7 +160,7 @@ func lookUpDirectoryMods(path string) ([]types.InternalMod, error) {
 					continue
 				}
 
-				mods = append(mods, types.InternalMod{Name: mod.Name, Enabled: false, PackageId: strings.ToLower(mod.PackageId), LoadAfter: mod.LoadOrder, Order: idx})
+				mods = append(mods, types.InternalMod{Name: mod.Name, Enabled: false, PackageId: strings.ToLower(mod.PackageId), LoadAfter: mod.LoadOrder, LoadBefore: mod.LoadBefore, Order: idx})
 			}
 		}
 

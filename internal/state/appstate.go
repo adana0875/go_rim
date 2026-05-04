@@ -19,6 +19,7 @@ type AppState struct {
 	DisplayedMods     map[string]types.InternalMod
 	PluginList        []string
 	ModEnabledChanges []func([]ModDelegate)
+	Rules             types.CommunityRules
 }
 
 func (state *AppState) AddModStateWatcher(fn func([]ModDelegate)) {
@@ -119,4 +120,20 @@ func (state *AppState) runModChangeDelegate(mods []ModDelegate) {
 	for _, delegate := range state.ModEnabledChanges {
 		delegate(mods)
 	}
+}
+
+func (state *AppState) SwapPlugin(curPos int, newPos int) {
+	//create temp arr
+	t := state.PluginList
+	//keep within bounds
+	newPos = max(0, min(newPos, len(t)-1))
+	if newPos == curPos {
+		return
+	}
+
+	//delete the item at its current position, and insert it into new pos
+	cur := t[curPos]
+	t = slices.Delete(t, curPos, curPos+1)
+	t = slices.Insert(t, newPos, cur)
+	state.PluginList = t
 }

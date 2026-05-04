@@ -10,6 +10,7 @@ type ModDef struct {
 	Versions     []string       `xml:"supportedVersions>li"`
 	Dependencies []Dependencies `xml:"modDependencies>li"`
 	LoadOrder    []string       `xml:"loadAfter>li"`
+	LoadBefore   []string       `xml:"loadBefore>li"`
 	PackageId    string         `xml:"packageId"`
 	Description  string         `xml:"description"`
 }
@@ -22,11 +23,12 @@ type Dependencies struct {
 }
 
 type InternalMod struct {
-	Name      string
-	PackageId string
-	Enabled   bool
-	LoadAfter []string
-	Order     int
+	Name       string
+	PackageId  string
+	Enabled    bool
+	LoadAfter  []string
+	LoadBefore []string
+	Order      int
 }
 
 type ModByOrder []InternalMod
