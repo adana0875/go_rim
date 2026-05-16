@@ -47,8 +47,13 @@ func readRules(path string) (types.CommunityRules, error) {
 }
 
 func main() {
-	state := state.AppState{ModList: map[string]types.InternalMod{}, PluginList: []string{}}
+	//establish the app state
+	state := state.AppState{
+		ModList:  map[string]types.InternalMod{},
+		Profiles: []types.Profile{{Name: "default", PluginList: []string{}}},
+	}
 
+	//read from files for initialization
 	params, err := readFile()
 	if err != nil {
 		panic("Unable to read input file")
@@ -64,6 +69,8 @@ func main() {
 	go util.InitializePaths(params, &state, func(types.LoadedResult) {
 
 	})
+
+	//initalize profiles
 
 	a := app.New()
 	w := a.NewWindow("")

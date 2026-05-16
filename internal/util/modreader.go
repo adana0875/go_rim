@@ -30,7 +30,7 @@ func InitializePaths(inputs pages.InputParams, appState *state.AppState, callbac
 
 	//check plugins for if we have it in modlist.
 	//if we have an item in plugin list, we should be subscribed to it
-	for _, plugin := range appState.PluginList {
+	for _, plugin := range appState.ActiveProfile.PluginList {
 		if strings.Contains(plugin, "ludeon.rimworld") {
 			continue
 		}
