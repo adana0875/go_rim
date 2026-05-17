@@ -3,6 +3,7 @@ package state
 import (
 	"gorim/internal/state"
 	"gorim/internal/types"
+	"log"
 	"slices"
 	"testing"
 
@@ -14,18 +15,49 @@ type modtest struct {
 	mods        []string
 }
 
+func profileToString(profile []types.Profile) []string {
+	var items []string
+	for _, p := range profile {
+		items = append(items, p.Name)
+	}
+	return items
+}
+
 func TestProfile(t *testing.T) {
 	assert := assert.New(t)
 	s := state.Initialize()
-	s.Profiles = append(s.Profiles, types.Profile{Name: "test_default"})
+	s.AddProfile("test_default")
 
 	assert.True(len(s.Profiles) > 0)
 	assert.NotEmpty(s.Profiles[0])
+	assert.NotNil(s.Profiles[0].PluginList)
 	if assert.NotEmpty(s.Profiles[0].Name) {
 		s.ChangeProfile(s.Profiles[0].Name)
 		assert.NotNil(s.ActiveProfile)
 		assert.Equal(s.ActiveProfile.Name, s.Profiles[0].Name)
 	}
+}
+
+func TestRemoveProfile(t *testing.T) {
+	assert := assert.New(t)
+	s := state.Initialize()
+	profiles := []string{"0", "1", "2", "3"}
+	remove := profiles[2]
+
+	for _, p := range profiles {
+		s.AddProfile(p)
+	}
+
+	assert.Equal(len(s.Profiles), len(profiles))
+
+	s.RemoveProfile(remove)
+	assert.Equal(len(s.Profiles), len(profiles)-1)
+
+	names := profileToString(s.Profiles)
+	assert.False(slices.Contains(names, remove))
+	assert.True(slices.Contains(names, profiles[0]))
+	assert.True(slices.Contains(names, profiles[1]))
+	assert.True(slices.Contains(names, profiles[3]))
 }
 
 func TestMultiProfile(t *testing.T) {
@@ -90,4 +122,59 @@ func TestProfileWithMods(t *testing.T) {
 			assert.True(slices.Contains(profile.mods, plugin))
 		}
 	}
+}
+
+// test adding mods only affects the plugins of that profile
+func TestAddAndSwitch(t *testing.T) {
+	assert := assert.New(t)
+
+	s := state.Initialize()
+	mods := []types.InternalMod{
+		{Name: "mod1", PackageId: "mod.1"},
+		{Name: "mod2", PackageId: "mod.2"},
+		{Name: "mod3", PackageId: "mod.3"},
+	}
+	s.AddProfile([]string{"default", "test", "test2"}...)
+
+	s.AddMods(mods)
+	s.ChangeProfile("default")
+
+	assert.Equal(s.ActiveProfile.Name, "default")
+	assert.Equal(len(s.ModList), len(mods))
+	assert.Equal(len(s.ActiveProfile.PluginList), 0)
+
+	s.ChangeProfile("test")
+	assert.Equal(s.ActiveProfile.Name, "test")
+	assert.Equal(len(s.ModList), len(mods))
+	assert.Equal(len(s.ActiveProfile.PluginList), 0)
+	s.EnableAll(true)
+
+	log.Println("Profiles: ", s.Profiles)
+	log.Println("Mods: ", s.ModList)
+	log.Println("active: ", s.ActiveProfile)
+	assert.Equal(len(s.ActiveProfile.PluginList), len(mods))
+
+	s.ChangeProfile("default")
+	log.Println("Profiles: ", s.Profiles)
+	assert.Equal(s.ActiveProfile.Name, "default")
+	assert.Equal(len(s.ModList), len(mods))
+	assert.Equal(len(s.ActiveProfile.PluginList), 0)
+
+	s.ChangeProfile("test2")
+	assert.Equal(s.ActiveProfile.Name, "test2")
+	assert.Equal(len(s.ModList), len(mods))
+	assert.Equal(len(s.ActiveProfile.PluginList), 0)
+	s.EnableMod(mods[0].PackageId, true)
+
+	assert.Equal(len(s.ActiveProfile.PluginList), 1)
+
+	s.ChangeProfile("test")
+	assert.Equal(s.ActiveProfile.Name, "test")
+	assert.Equal(len(s.ModList), len(mods))
+	assert.Equal(len(mods), len(s.ActiveProfile.PluginList))
+
+	s.ChangeProfile("test2")
+	assert.Equal(s.ActiveProfile.Name, "test2")
+	assert.Equal(len(s.ModList), len(mods))
+	assert.Equal(1, len(s.ActiveProfile.PluginList))
 }

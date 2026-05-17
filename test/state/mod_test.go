@@ -1,6 +1,7 @@
 package state
 
 import (
+	"fmt"
 	"gorim/internal/state"
 	"gorim/internal/types"
 	"testing"
@@ -8,11 +9,35 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestAddMod(t *testing.T) {
+	assert := assert.New(t)
+	s := state.Initialize()
+
+	assert.Equal(0, len(s.ModList))
+	s.AddMod(types.InternalMod{Name: "test", PackageId: "test.mod"})
+	assert.Equal(1, len(s.ModList))
+}
+
+func TestAddMods(t *testing.T) {
+	assert := assert.New(t)
+	s := state.Initialize()
+
+	assert.Equal(0, len(s.ModList))
+	nMods := 10
+	var modsToAdd []types.InternalMod = make([]types.InternalMod, nMods)
+	for i := range nMods - 1 {
+		modsToAdd = append(modsToAdd, types.InternalMod{Name: "testmod", PackageId: fmt.Sprintf("test_%d", i)})
+	}
+
+	s.AddMods(modsToAdd)
+	assert.Equal(nMods, len(s.ModList))
+}
+
 func TestEnableMods(t *testing.T) {
 	testMod := types.InternalMod{Name: "Test Mod", PackageId: "test.mod"}
 	assert := assert.New(t)
 	s := state.Initialize()
-	s.Profiles = append(s.Profiles, types.Profile{Name: "test_default"})
+	s.AddProfile("test_default")
 	s.ChangeProfile(s.Profiles[0].Name)
 
 	//add a mod
