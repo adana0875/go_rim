@@ -3,6 +3,7 @@ package pages
 import (
 	"fmt"
 	"gorim/internal/state"
+	"gorim/internal/types"
 	"log"
 	"math/rand"
 
@@ -11,22 +12,40 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+//top level panel which holds the profile selection
+
 func NewBarPanel(appState *state.AppState) *fyne.Container {
-	profileSelect := newProfileChoices(appState)
+	profileSelect, addFunc := newProfileChoices(appState)
 	addButton := widget.NewButton("+", func() {
-		appState.Profiles = append(appState.Profiles, fmt.Sprintf("Profile New %d", rand.Int()))
-		profileSelect.Refresh()
-		log.Println("New Profile")
+		newName := fmt.Sprintf("new_profile_%d", rand.Int())
+		newProfile := types.Profile{Name: newName, PluginList: []string{}}
+		appState.Profiles = append(appState.Profiles, newProfile)
+		addFunc(newName)
+		log.Println("New Profile, appstate has profiles: ", appState.Profiles)
 	})
 	mainContent := container.NewHBox(profileSelect, addButton)
 	spacedContent := container.NewCenter(mainContent)
 	return spacedContent
 }
 
-func newProfileChoices(appState *state.AppState) *widget.Select {
-	combo := widget.NewSelect(appState.Profiles, func(value string) {
+func newProfileChoices(appState *state.AppState) (*widget.Select, func(newOption string)) {
+	var names []string = make([]string, len(appState.Profiles))
+	for idx, item := range appState.Profiles {
+		names[idx] = item.Name
+	}
+	log.Println("Profiles: ", names)
+	combo := widget.NewSelect(names, func(value string) {
 		log.Println("Clicked Profile ", value)
+		//call in to change profile
+		appState.ChangeProfile(value)
 	})
 
-	return combo
+	addOption := func(newOption string) {
+		combo.Options = append(combo.Options, newOption)
+		combo.Refresh()
+	}
+
+	combo.SetSelected(appState.ActiveProfile.Name)
+
+	return combo, addOption
 }
