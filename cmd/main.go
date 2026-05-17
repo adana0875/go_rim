@@ -53,6 +53,9 @@ func main() {
 		Profiles: []types.Profile{{Name: "default", PluginList: []string{}}},
 	}
 
+	//resolve active profile
+	state.ActiveProfile = &state.Profiles[0]
+
 	//read from files for initialization
 	params, err := readFile()
 	if err != nil {

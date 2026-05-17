@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"gorim/internal/state"
 	"gorim/internal/types"
+	"log"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestAddMod(t *testing.T) {
+	log.Printf("Running Test [%s]", t.Name())
 	assert := assert.New(t)
 	s := state.Initialize()
 
@@ -19,13 +21,14 @@ func TestAddMod(t *testing.T) {
 }
 
 func TestAddMods(t *testing.T) {
+	log.Printf("Running Test [%s]", t.Name())
 	assert := assert.New(t)
 	s := state.Initialize()
 
 	assert.Equal(0, len(s.ModList))
 	nMods := 10
-	var modsToAdd []types.InternalMod = make([]types.InternalMod, nMods)
-	for i := range nMods - 1 {
+	modsToAdd := []types.InternalMod{}
+	for i := range nMods {
 		modsToAdd = append(modsToAdd, types.InternalMod{Name: "testmod", PackageId: fmt.Sprintf("test_%d", i)})
 	}
 
@@ -34,6 +37,7 @@ func TestAddMods(t *testing.T) {
 }
 
 func TestEnableMods(t *testing.T) {
+	log.Printf("Running Test [%s]", t.Name())
 	testMod := types.InternalMod{Name: "Test Mod", PackageId: "test.mod"}
 	assert := assert.New(t)
 	s := state.Initialize()
@@ -53,6 +57,7 @@ func TestEnableMods(t *testing.T) {
 }
 
 func TestEnableDisableMods(t *testing.T) {
+	log.Printf("Running Test [%s]", t.Name())
 	testMod := []types.InternalMod{
 		{Name: "Test Mod", PackageId: "test.mod"},
 		{Name: "Test Mod2", PackageId: "test.mod.new"},

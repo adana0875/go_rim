@@ -45,5 +45,7 @@ func newProfileChoices(appState *state.AppState) (*widget.Select, func(newOption
 		combo.Refresh()
 	}
 
+	combo.SetSelected(appState.ActiveProfile.Name)
+
 	return combo, addOption
 }

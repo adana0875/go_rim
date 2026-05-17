@@ -79,6 +79,7 @@ func readModsConfig(path string) (types.ModsConfig, error) {
 	return types.ModsConfig{}, errors.New("failed to find ModsConfig.xml")
 }
 
+// adds all the discovered mods to the appState
 func collectMods(pathToWorkshop string, appState *state.AppState) {
 	mods, err := lookUpDirectoryMods(pathToWorkshop)
 	if err != nil {

@@ -17,7 +17,7 @@ type AppState struct {
 	KnownExpansion    []string
 	ModList           map[string]types.InternalMod
 	DisplayedMods     map[string]types.InternalMod
-	ActiveProfile     types.Profile
+	ActiveProfile     *types.Profile
 	Profiles          []types.Profile
 	ModEnabledChanges []func([]ModDelegate)
 	Rules             types.CommunityRules
@@ -61,6 +61,8 @@ func (state *AppState) AddMods(mods []types.InternalMod) {
 		if _, has := state.ModList[mod.PackageId]; !has {
 			state.ModList[mod.PackageId] = mod
 			addedMods = append(addedMods, mod)
+		} else {
+			log.Printf("Failed to add mod - invalid mod [%s]", mod.PackageId)
 		}
 	}
 }
@@ -73,6 +75,10 @@ func (state *AppState) EnableMod(name string, enabled bool) {
 }
 
 func (state *AppState) enableMod(name string, enabled bool, delegate bool) {
+	if len(state.ModList) <= 0 {
+		return
+	}
+
 	//check if we are subscribed to it
 	mod, ok := state.ModList[name]
 	if !ok {
@@ -83,6 +89,11 @@ func (state *AppState) enableMod(name string, enabled bool, delegate bool) {
 	// update the state in modlist var
 	mod.Enabled = enabled
 	state.ModList[name] = mod
+
+	if state.ActiveProfile == nil {
+		log.Println("no active profile selected")
+		return
+	}
 
 	//get index of mod
 	index := slices.Index(state.ActiveProfile.PluginList, name)
@@ -139,38 +150,8 @@ func (state *AppState) SwapPlugin(curPos int, newPos int) {
 	state.ActiveProfile.PluginList = t
 }
 
-func (this *AppState) ChangeProfile(profile string) {
-	for _, item := range this.Profiles {
-		if item.Name == profile {
-			this.ActiveProfile = item
-
-			log.Println("using profile ", this.ActiveProfile)
-			this.EnableAll(false)
-			log.Println("Enabling plugins for profile: ", this.ActiveProfile.PluginList)
-			this.ActivatePlugins(this.ActiveProfile.PluginList)
-			return
-		}
-	}
-
-	log.Println("unable to find profile ", profile)
-}
-
-func (this *AppState) SaveMods() {
-	log.Printf("Saving profile [%s] with plugins %v", this.ActiveProfile.Name, this.ActiveProfile.PluginList)
-
-	log.Println("Profiles: ", this.Profiles)
-	for i := 0; i < len(this.Profiles); i++ {
-		if this.Profiles[i].Name == this.ActiveProfile.Name {
-			log.Println("saving profile with pluginList: ", this.ActiveProfile.PluginList)
-			this.Profiles[i] = this.ActiveProfile
-		}
-	}
-	log.Println("Profiles now: ", this.Profiles)
-}
-
 // activate mods via a list of plugins
 func (appState *AppState) ActivatePlugins(plugins []string) {
-
 	for _, plugin := range plugins {
 		if strings.Contains(plugin, "ludeon.rimworld") {
 			continue
@@ -178,6 +159,7 @@ func (appState *AppState) ActivatePlugins(plugins []string) {
 		_, ok := appState.ModList[plugin]
 		if !ok {
 			log.Println("Error: modlist doest have plugin : ", plugin)
+			continue
 		}
 
 		//enable the mod

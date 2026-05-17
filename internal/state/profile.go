@@ -41,18 +41,11 @@ func (this *AppState) RemoveProfile(profile string) {
 
 // change profile functionality
 func (this *AppState) ChangeProfile(profile string) {
-	if this.ActiveProfile != nil {
-		this.SaveMods()
-	}
 	//try and find profile
-	for _, item := range this.Profiles {
-		if item.Name == profile {
-			log.Printf("using profile %s, switching to %v", this.ActiveProfile, item)
-			//before removing all plugins, get a list of the ones we want activated
-			this.EnableAll(false)
-			log.Println("Enabling plugins for profile: ", item.PluginList)
-			this.ActivatePlugins(item.PluginList)
-			this.ActiveProfile = &item
+	for i := range this.Profiles {
+		if this.Profiles[i].Name == profile {
+			//swap in the profile - this should swap from storage everything about profile
+			this.ActiveProfile = &this.Profiles[i]
 			return
 		}
 	}
