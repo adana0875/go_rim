@@ -42,14 +42,28 @@ func (this *AppState) RemoveProfile(profile string) {
 // change profile functionality
 func (this *AppState) ChangeProfile(profile string) {
 	//try and find profile
+	var index int = -1
 	for i := range this.Profiles {
 		if this.Profiles[i].Name == profile {
-			//swap in the profile - this should swap from storage everything about profile
-			this.ActiveProfile = &this.Profiles[i]
-			return
+			index = i
+			break
 		}
 	}
 
+	if index > -1 {
+		//swap in the profile - this should swap from storage everything about profile
+		this.ActiveProfile = &this.Profiles[index]
+
+		t := this.ActiveProfile.PluginList
+
+		//disable all mods, then re-enable the ones saved to this profile
+		this.EnableAll(false)
+		for _, plugin := range t {
+			this.enableMod(plugin, true, true)
+		}
+		this.ActiveProfile.PluginList = t
+		return
+	}
 	log.Println("unable to find profile ", profile)
 }
 

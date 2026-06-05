@@ -19,6 +19,45 @@ type verifyStruct struct {
 	expectedPlugins []string
 }
 
+func TestChangeWithMods(t *testing.T) {
+	log.Printf("Running Test [%s]", t.Name())
+	assert := assert.New(t)
+	profiles := []string{"4", "5", "6"}
+
+	s := state.Initialize()
+	s.AddProfile(profiles...)
+
+	assert.Equal(len(profiles), len(s.Profiles))
+
+	//create and add random mods
+	numMods := 6
+	var mods []types.InternalMod
+	for _ = range numMods {
+		mods = append(mods, test.CreateRandomMod())
+	}
+
+	s.AddMods(mods)
+	assert.Equal(numMods, len(s.ModList))
+
+	for _, profile := range profiles {
+		s.ChangeProfile(profile)
+
+		//mods are disabled by default
+		for _, mod := range s.ModList {
+			assert.False(mod.Enabled)
+		}
+
+		s.EnableAll(true)
+
+		//now they are enabled
+		for _, mod := range s.ModList {
+			assert.True(mod.Enabled)
+		}
+
+		assert.Equal(numMods, len(s.ActiveProfile.PluginList))
+	}
+}
+
 func TestChangeProfile(t *testing.T) {
 	log.Printf("Running Test [%s]", t.Name())
 	assert := assert.New(t)
@@ -39,11 +78,13 @@ func TestChangeProfile(t *testing.T) {
 	s.AddMods(mods)
 	assert.Equal(numMods, len(s.ModList))
 
+	//enable 1 mod - plugin list is now 1
 	s.ChangeProfile("4")
-	s.EnableMod(mods[2].PackageId, true)
 
+	s.EnableMod(mods[2].PackageId, true)
 	assert.Equal(1, len(s.ActiveProfile.PluginList))
 
+	//other profiles have no mod enabled
 	for i := range s.Profiles {
 		if s.Profiles[i].Name == "4" {
 			assert.Equal(1, len(s.Profiles[i].PluginList))
@@ -53,6 +94,8 @@ func TestChangeProfile(t *testing.T) {
 	}
 
 	s.ChangeProfile("5")
+
+	//enable 2 mods on another profile, and verify this count is unique per profile
 	assert.Equal(0, len(s.ActiveProfile.PluginList))
 	s.EnableMod(mods[0].PackageId, true)
 	s.EnableMod(mods[1].PackageId, true)
@@ -62,9 +105,10 @@ func TestChangeProfile(t *testing.T) {
 	for i := range s.Profiles {
 		if s.Profiles[i].Name == "5" {
 			assert.Equal(2, len(s.Profiles[i].PluginList))
-		}
-		if s.Profiles[i].Name == "4" {
+		} else if s.Profiles[i].Name == "4" {
 			assert.Equal(1, len(s.Profiles[i].PluginList))
+		} else {
+			assert.Equal(0, len(s.Profiles[i].PluginList))
 		}
 	}
 
@@ -128,10 +172,14 @@ func TestProfileWithMods(t *testing.T) {
 	for _, profile := range s.Profiles {
 		assert.Equal(len(expect[profile.Name].expectedPlugins), len(profile.PluginList))
 	}
+	log.Println("Profiless: ", s.Profiles)
 
 	//assert that changing to these profiles doesnt result in any strange behavior
 	for _, profile := range s.Profiles {
+		log.Println("Profiless: ", s.Profiles)
 		s.ChangeProfile(profile.Name)
+
+		log.Println("Profile After: ", s.ActiveProfile)
 
 		assert.Equal(profile.Name, s.ActiveProfile.Name)
 		assert.Equal(len(profile.PluginList), len(s.ActiveProfile.PluginList))
