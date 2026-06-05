@@ -24,7 +24,7 @@ func NewActionsPanel(appState *state.AppState) *fyne.Container {
 func applyChanges(state *state.AppState) {
 	log.Println("Appling changes to a new ModsConfig.xml")
 
-	newMods := types.ModsConfig{Version: state.RimWorldVersion, ActiveMods: state.PluginList, KnownExpansions: state.KnownExpansion}
+	newMods := types.ModsConfig{Version: state.RimWorldVersion, ActiveMods: state.ActiveProfile.PluginList, KnownExpansions: state.KnownExpansion}
 
 	file, err := os.Create("newmodsconfig.xml")
 	if err != nil {

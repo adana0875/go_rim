@@ -46,14 +46,20 @@ func NewPluginList(appState *state.AppState) *fyne.Container {
 	})
 
 	sort := widget.NewButton("Sort", func() {
-		newList, err := sorting.TopoSortList(appState.ModList, appState.PluginList, appState.Rules)
+		newList, err := sorting.TopoSortList(appState.ModList, appState.ActiveProfile.PluginList, appState.Rules)
 		if err != nil {
 			log.Println("Failed to sort: ", err)
 		}
-		appState.PluginList = newList
+		appState.ActiveProfile.PluginList = newList
 		fyne.Do(func() { modContainer.Refresh() })
 	})
-	buttons := container.NewHBox(up, down, sort)
+
+	save := widget.NewButton("Save", func() {
+		log.Println("Saving Modlist")
+		appState.SaveMods()
+	})
+
+	buttons := container.NewHBox(up, down, sort, save)
 	box := container.NewBorder(nil, buttons, nil, nil, mainContainer)
 
 	sizer := canvas.NewRectangle(color.Transparent)

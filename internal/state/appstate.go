@@ -4,6 +4,7 @@ import (
 	"gorim/internal/types"
 	"log"
 	"slices"
+	"strings"
 )
 
 type ModDelegate struct {
@@ -14,10 +15,10 @@ type ModDelegate struct {
 type AppState struct {
 	RimWorldVersion   string
 	KnownExpansion    []string
-	Profiles          []string
 	ModList           map[string]types.InternalMod
 	DisplayedMods     map[string]types.InternalMod
-	PluginList        []string
+	ActiveProfile     *types.Profile
+	Profiles          []types.Profile
 	ModEnabledChanges []func([]ModDelegate)
 	Rules             types.CommunityRules
 }
@@ -27,12 +28,12 @@ func (state *AppState) AddModStateWatcher(fn func([]ModDelegate)) {
 }
 
 func (state *AppState) AddPlugin(plugin types.InternalPlugin) {
-	if slices.Contains(state.PluginList, plugin.Name) {
+	if slices.Contains(state.ActiveProfile.PluginList, plugin.Name) {
 		log.Println("plugin already in plugins list")
 		return
 	}
-	plugins := append(state.PluginList, plugin.Name)
-	state.PluginList = plugins
+	plugins := append(state.ActiveProfile.PluginList, plugin.Name)
+	state.ActiveProfile.PluginList = plugins
 }
 
 func (state *AppState) AddMod(mod types.InternalMod) {
@@ -47,11 +48,11 @@ func (state *AppState) AddMod(mod types.InternalMod) {
 func (state *AppState) AddPlugins(plugins []types.InternalPlugin) {
 	var addedPlugins []string
 	for _, plugin := range plugins {
-		if !slices.Contains(state.PluginList, plugin.Name) {
+		if !slices.Contains(state.ActiveProfile.PluginList, plugin.Name) {
 			addedPlugins = append(addedPlugins, plugin.Name)
 		}
 	}
-	state.PluginList = append(state.PluginList, addedPlugins...)
+	state.ActiveProfile.PluginList = append(state.ActiveProfile.PluginList, addedPlugins...)
 }
 
 func (state *AppState) AddMods(mods []types.InternalMod) {
@@ -60,6 +61,8 @@ func (state *AppState) AddMods(mods []types.InternalMod) {
 		if _, has := state.ModList[mod.PackageId]; !has {
 			state.ModList[mod.PackageId] = mod
 			addedMods = append(addedMods, mod)
+		} else {
+			log.Printf("Failed to add mod - invalid mod [%s]", mod.PackageId)
 		}
 	}
 }
@@ -72,6 +75,10 @@ func (state *AppState) EnableMod(name string, enabled bool) {
 }
 
 func (state *AppState) enableMod(name string, enabled bool, delegate bool) {
+	if len(state.ModList) <= 0 {
+		return
+	}
+
 	//check if we are subscribed to it
 	mod, ok := state.ModList[name]
 	if !ok {
@@ -83,21 +90,26 @@ func (state *AppState) enableMod(name string, enabled bool, delegate bool) {
 	mod.Enabled = enabled
 	state.ModList[name] = mod
 
+	if state.ActiveProfile == nil {
+		log.Println("no active profile selected")
+		return
+	}
+
 	//get index of mod
-	index := slices.Index(state.PluginList, name)
+	index := slices.Index(state.ActiveProfile.PluginList, name)
 
 	//if removing
 	if !enabled {
-		index := slices.Index(state.PluginList, name)
+		index := slices.Index(state.ActiveProfile.PluginList, name)
+		//likely means we have already removed the mod
 		if index == -1 {
-			log.Println("cant find mod")
 			return
 		}
-		state.PluginList = slices.Delete(state.PluginList, index, index+1)
+		state.ActiveProfile.PluginList = slices.Delete(state.ActiveProfile.PluginList, index, index+1)
 	} else {
 		//only add a new one if we dont have this in there - it goes at the end
 		if index == -1 {
-			state.PluginList = append(state.PluginList, name)
+			state.ActiveProfile.PluginList = append(state.ActiveProfile.PluginList, name)
 		}
 	}
 	if delegate {
@@ -124,7 +136,7 @@ func (state *AppState) runModChangeDelegate(mods []ModDelegate) {
 
 func (state *AppState) SwapPlugin(curPos int, newPos int) {
 	//create temp arr
-	t := state.PluginList
+	t := state.ActiveProfile.PluginList
 	//keep within bounds
 	newPos = max(0, min(newPos, len(t)-1))
 	if newPos == curPos {
@@ -135,5 +147,23 @@ func (state *AppState) SwapPlugin(curPos int, newPos int) {
 	cur := t[curPos]
 	t = slices.Delete(t, curPos, curPos+1)
 	t = slices.Insert(t, newPos, cur)
-	state.PluginList = t
+	state.ActiveProfile.PluginList = t
+}
+
+// activate mods via a list of plugins
+func (appState *AppState) ActivatePlugins(plugins []string) {
+	for _, plugin := range plugins {
+		if strings.Contains(plugin, "ludeon.rimworld") {
+			continue
+		}
+		_, ok := appState.ModList[plugin]
+		if !ok {
+			log.Println("Error: modlist doest have plugin : ", plugin)
+			continue
+		}
+
+		//enable the mod
+		appState.EnableMod(plugin, true)
+
+	}
 }
